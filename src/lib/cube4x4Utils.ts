@@ -9,11 +9,6 @@ export const cloneCube4x4 = (cube: CubeState4x4): CubeState4x4 => ({
   R: [...cube.R],
 });
 
-// Rotate a 4x4 face clockwise
-// Layout: 0  1  2  3
-//         4  5  6  7
-//         8  9  10 11
-//         12 13 14 15
 const rotateFaceCW = (face: Face4x4): Face4x4 => [
   face[12], face[8], face[4], face[0],
   face[13], face[9], face[5], face[1],
@@ -28,126 +23,351 @@ const rotateFaceCCW = (face: Face4x4): Face4x4 => [
   face[0], face[4], face[8], face[12],
 ];
 
-// Outer layer moves for 4x4
 export const applyMove4x4 = (cube: CubeState4x4, move: Move4x4): CubeState4x4 => {
-  const newCube = cloneCube4x4(cube);
-  const baseFace = move[0].toUpperCase();
-  const isDouble = move.endsWith('2');
-  const isPrime = move.includes("'");
-  const isInner = move[0] === move[0].toLowerCase() && move[0] !== move[0].toUpperCase();
-  
-  // For simplicity, implement basic outer moves
-  // Full 4x4 implementation would need inner slice moves
-  
+  const c = cloneCube4x4(cube);
+
   switch (move) {
+    // ===== U =====
     case 'U': {
-      newCube.U = rotateFaceCW(cube.U);
-      const tempF = cube.F.slice(0, 4);
-      const tempR = cube.R.slice(0, 4);
-      const tempB = cube.B.slice(0, 4);
-      const tempL = cube.L.slice(0, 4);
-      
+      c.U = rotateFaceCW(cube.U);
       for (let i = 0; i < 4; i++) {
-        newCube.F[i] = tempR[i];
-        newCube.R[i] = tempB[i];
-        newCube.B[i] = tempL[i];
-        newCube.L[i] = tempF[i];
+        c.F[i] = cube.R[i]; c.R[i] = cube.B[i];
+        c.B[i] = cube.L[i]; c.L[i] = cube.F[i];
       }
       break;
     }
     case "U'": {
-      newCube.U = rotateFaceCCW(cube.U);
-      const tempF = cube.F.slice(0, 4);
-      const tempR = cube.R.slice(0, 4);
-      const tempB = cube.B.slice(0, 4);
-      const tempL = cube.L.slice(0, 4);
-      
+      c.U = rotateFaceCCW(cube.U);
       for (let i = 0; i < 4; i++) {
-        newCube.F[i] = tempL[i];
-        newCube.L[i] = tempB[i];
-        newCube.B[i] = tempR[i];
-        newCube.R[i] = tempF[i];
+        c.F[i] = cube.L[i]; c.L[i] = cube.B[i];
+        c.B[i] = cube.R[i]; c.R[i] = cube.F[i];
       }
       break;
     }
-    case 'U2':
-      return applyMove4x4(applyMove4x4(cube, 'U'), 'U');
-    
+    case 'U2': return applyMove4x4(applyMove4x4(cube, 'U'), 'U');
+
+    // ===== D =====
+    case 'D': {
+      c.D = rotateFaceCW(cube.D);
+      for (let i = 12; i < 16; i++) {
+        c.F[i] = cube.L[i]; c.L[i] = cube.B[i];
+        c.B[i] = cube.R[i]; c.R[i] = cube.F[i];
+      }
+      break;
+    }
+    case "D'": {
+      c.D = rotateFaceCCW(cube.D);
+      for (let i = 12; i < 16; i++) {
+        c.F[i] = cube.R[i]; c.R[i] = cube.B[i];
+        c.B[i] = cube.L[i]; c.L[i] = cube.F[i];
+      }
+      break;
+    }
+    case 'D2': return applyMove4x4(applyMove4x4(cube, 'D'), 'D');
+
+    // ===== R =====
     case 'R': {
-      newCube.R = rotateFaceCW(cube.R);
-      const cols = [3, 7, 11, 15];
-      const tempU = cols.map(i => cube.U[i]);
-      const tempF = cols.map(i => cube.F[i]);
-      const tempD = cols.map(i => cube.D[i]);
-      const tempB = [cube.B[12], cube.B[8], cube.B[4], cube.B[0]];
-      
-      cols.forEach((col, i) => {
-        newCube.U[col] = tempF[i];
-        newCube.F[col] = tempD[i];
-        newCube.D[col] = tempB[3 - i];
-        newCube.B[cols[3 - i] - 3] = tempU[i];
-      });
+      c.R = rotateFaceCW(cube.R);
+      const col = [3, 7, 11, 15];
+      for (let i = 0; i < 4; i++) {
+        c.U[col[i]] = cube.F[col[i]];
+        c.F[col[i]] = cube.D[col[i]];
+        c.D[col[i]] = cube.B[col[3 - i]];
+        c.B[col[3 - i]] = cube.U[col[i]];
+      }
+      // Fix: B uses left col reversed
+      const tU = col.map(j => cube.U[j]);
+      const tF = col.map(j => cube.F[j]);
+      const tD = col.map(j => cube.D[j]);
+      const tB = [cube.B[12], cube.B[8], cube.B[4], cube.B[0]];
+      for (let i = 0; i < 4; i++) {
+        c.U[col[i]] = tF[i];
+        c.F[col[i]] = tD[i];
+        c.D[col[i]] = tB[3 - i];
+      }
+      c.B[12] = tU[0]; c.B[8] = tU[1]; c.B[4] = tU[2]; c.B[0] = tU[3];
       break;
     }
     case "R'": {
-      newCube.R = rotateFaceCCW(cube.R);
-      const cols = [3, 7, 11, 15];
-      const tempU = cols.map(i => cube.U[i]);
-      const tempF = cols.map(i => cube.F[i]);
-      const tempD = cols.map(i => cube.D[i]);
-      const tempB = [cube.B[12], cube.B[8], cube.B[4], cube.B[0]];
-      
-      cols.forEach((col, i) => {
-        newCube.F[col] = tempU[i];
-        newCube.D[col] = tempF[i];
-        newCube.B[cols[3 - i] - 3] = tempD[i];
-        newCube.U[col] = tempB[3 - i];
-      });
+      c.R = rotateFaceCCW(cube.R);
+      const col = [3, 7, 11, 15];
+      const tU = col.map(j => cube.U[j]);
+      const tF = col.map(j => cube.F[j]);
+      const tD = col.map(j => cube.D[j]);
+      const tB = [cube.B[12], cube.B[8], cube.B[4], cube.B[0]];
+      for (let i = 0; i < 4; i++) {
+        c.F[col[i]] = tU[i];
+        c.D[col[i]] = tF[i];
+        c.U[col[i]] = tB[3 - i];
+      }
+      c.B[12] = tD[0]; c.B[8] = tD[1]; c.B[4] = tD[2]; c.B[0] = tD[3];
       break;
     }
-    case 'R2':
-      return applyMove4x4(applyMove4x4(cube, 'R'), 'R');
-    
-    case 'F': {
-      newCube.F = rotateFaceCW(cube.F);
-      const tempU = cube.U.slice(12, 16);
-      const tempR = [cube.R[0], cube.R[4], cube.R[8], cube.R[12]];
-      const tempD = cube.D.slice(0, 4);
-      const tempL = [cube.L[3], cube.L[7], cube.L[11], cube.L[15]];
-      
+    case 'R2': return applyMove4x4(applyMove4x4(cube, 'R'), 'R');
+
+    // ===== L =====
+    case 'L': {
+      c.L = rotateFaceCW(cube.L);
+      const col = [0, 4, 8, 12];
+      const tU = col.map(j => cube.U[j]);
+      const tF = col.map(j => cube.F[j]);
+      const tD = col.map(j => cube.D[j]);
+      const tB = [cube.B[15], cube.B[11], cube.B[7], cube.B[3]];
       for (let i = 0; i < 4; i++) {
-        newCube.R[i * 4] = tempU[i];
-        newCube.D[i] = tempR[3 - i];
-        newCube.L[i * 4 + 3] = tempD[i];
-        newCube.U[12 + i] = tempL[3 - i];
+        c.F[col[i]] = tU[i];
+        c.D[col[i]] = tF[i];
+        c.U[col[i]] = tB[3 - i];
+      }
+      c.B[15] = tD[0]; c.B[11] = tD[1]; c.B[7] = tD[2]; c.B[3] = tD[3];
+      break;
+    }
+    case "L'": {
+      c.L = rotateFaceCCW(cube.L);
+      const col = [0, 4, 8, 12];
+      const tU = col.map(j => cube.U[j]);
+      const tF = col.map(j => cube.F[j]);
+      const tD = col.map(j => cube.D[j]);
+      const tB = [cube.B[15], cube.B[11], cube.B[7], cube.B[3]];
+      for (let i = 0; i < 4; i++) {
+        c.U[col[i]] = tF[i];
+        c.F[col[i]] = tD[i];
+        c.D[col[i]] = tB[3 - i];
+      }
+      c.B[15] = tU[0]; c.B[11] = tU[1]; c.B[7] = tU[2]; c.B[3] = tU[3];
+      break;
+    }
+    case 'L2': return applyMove4x4(applyMove4x4(cube, 'L'), 'L');
+
+    // ===== F =====
+    case 'F': {
+      c.F = rotateFaceCW(cube.F);
+      const tU = [cube.U[12], cube.U[13], cube.U[14], cube.U[15]];
+      const tR = [cube.R[0], cube.R[4], cube.R[8], cube.R[12]];
+      const tD = [cube.D[0], cube.D[1], cube.D[2], cube.D[3]];
+      const tL = [cube.L[3], cube.L[7], cube.L[11], cube.L[15]];
+      for (let i = 0; i < 4; i++) {
+        c.R[i * 4] = tU[i];
+        c.D[i] = tR[3 - i];
+        c.L[i * 4 + 3] = tD[i];
+        c.U[12 + i] = tL[3 - i];
       }
       break;
     }
     case "F'": {
-      newCube.F = rotateFaceCCW(cube.F);
-      const tempU = cube.U.slice(12, 16);
-      const tempR = [cube.R[0], cube.R[4], cube.R[8], cube.R[12]];
-      const tempD = cube.D.slice(0, 4);
-      const tempL = [cube.L[3], cube.L[7], cube.L[11], cube.L[15]];
-      
+      c.F = rotateFaceCCW(cube.F);
+      const tU = [cube.U[12], cube.U[13], cube.U[14], cube.U[15]];
+      const tR = [cube.R[0], cube.R[4], cube.R[8], cube.R[12]];
+      const tD = [cube.D[0], cube.D[1], cube.D[2], cube.D[3]];
+      const tL = [cube.L[3], cube.L[7], cube.L[11], cube.L[15]];
       for (let i = 0; i < 4; i++) {
-        newCube.L[i * 4 + 3] = tempU[3 - i];
-        newCube.U[12 + i] = tempR[i];
-        newCube.R[i * 4] = tempD[3 - i];
-        newCube.D[i] = tempL[i];
+        c.L[i * 4 + 3] = tU[3 - i];
+        c.U[12 + i] = tR[i];
+        c.R[i * 4] = tD[3 - i];
+        c.D[i] = tL[i];
       }
       break;
     }
-    case 'F2':
-      return applyMove4x4(applyMove4x4(cube, 'F'), 'F');
-    
-    // Add remaining moves as needed
+    case 'F2': return applyMove4x4(applyMove4x4(cube, 'F'), 'F');
+
+    // ===== B =====
+    case 'B': {
+      c.B = rotateFaceCW(cube.B);
+      const tU = [cube.U[0], cube.U[1], cube.U[2], cube.U[3]];
+      const tR = [cube.R[3], cube.R[7], cube.R[11], cube.R[15]];
+      const tD = [cube.D[12], cube.D[13], cube.D[14], cube.D[15]];
+      const tL = [cube.L[0], cube.L[4], cube.L[8], cube.L[12]];
+      for (let i = 0; i < 4; i++) {
+        c.R[i * 4 + 3] = tU[i];
+        c.D[12 + i] = tR[i];
+        c.L[i * 4] = tD[3 - i];
+        c.U[i] = tL[3 - i];
+      }
+      break;
+    }
+    case "B'": {
+      c.B = rotateFaceCCW(cube.B);
+      const tU = [cube.U[0], cube.U[1], cube.U[2], cube.U[3]];
+      const tR = [cube.R[3], cube.R[7], cube.R[11], cube.R[15]];
+      const tD = [cube.D[12], cube.D[13], cube.D[14], cube.D[15]];
+      const tL = [cube.L[0], cube.L[4], cube.L[8], cube.L[12]];
+      for (let i = 0; i < 4; i++) {
+        c.L[i * 4] = tU[i];
+        c.U[i] = tR[3 - i];
+        c.R[i * 4 + 3] = tD[3 - i];
+        c.D[12 + i] = tL[i];
+      }
+      break;
+    }
+    case 'B2': return applyMove4x4(applyMove4x4(cube, 'B'), 'B');
+
+    // ===== Inner u (2nd row, same dir as U) =====
+    case 'u': {
+      for (let i = 4; i < 8; i++) {
+        c.F[i] = cube.R[i]; c.R[i] = cube.B[i];
+        c.B[i] = cube.L[i]; c.L[i] = cube.F[i];
+      }
+      break;
+    }
+    case "u'": {
+      for (let i = 4; i < 8; i++) {
+        c.F[i] = cube.L[i]; c.L[i] = cube.B[i];
+        c.B[i] = cube.R[i]; c.R[i] = cube.F[i];
+      }
+      break;
+    }
+    case 'u2': return applyMove4x4(applyMove4x4(cube, 'u'), 'u');
+
+    // ===== Inner d (3rd row, same dir as D) =====
+    case 'd': {
+      for (let i = 8; i < 12; i++) {
+        c.F[i] = cube.L[i]; c.L[i] = cube.B[i];
+        c.B[i] = cube.R[i]; c.R[i] = cube.F[i];
+      }
+      break;
+    }
+    case "d'": {
+      for (let i = 8; i < 12; i++) {
+        c.F[i] = cube.R[i]; c.R[i] = cube.B[i];
+        c.B[i] = cube.L[i]; c.L[i] = cube.F[i];
+      }
+      break;
+    }
+    case 'd2': return applyMove4x4(applyMove4x4(cube, 'd'), 'd');
+
+    // ===== Inner r (col [2,6,10,14], same dir as R) =====
+    case 'r': {
+      const col = [2, 6, 10, 14];
+      const bCol = [13, 9, 5, 1]; // B 2nd col from left, reversed
+      const tU = col.map(j => cube.U[j]);
+      const tF = col.map(j => cube.F[j]);
+      const tD = col.map(j => cube.D[j]);
+      const tB = bCol.map(j => cube.B[j]);
+      for (let i = 0; i < 4; i++) {
+        c.U[col[i]] = tF[i];
+        c.F[col[i]] = tD[i];
+        c.D[col[i]] = tB[3 - i];
+      }
+      c.B[bCol[0]] = tU[3]; c.B[bCol[1]] = tU[2];
+      c.B[bCol[2]] = tU[1]; c.B[bCol[3]] = tU[0];
+      break;
+    }
+    case "r'": {
+      const col = [2, 6, 10, 14];
+      const bCol = [13, 9, 5, 1];
+      const tU = col.map(j => cube.U[j]);
+      const tF = col.map(j => cube.F[j]);
+      const tD = col.map(j => cube.D[j]);
+      const tB = bCol.map(j => cube.B[j]);
+      for (let i = 0; i < 4; i++) {
+        c.F[col[i]] = tU[i];
+        c.D[col[i]] = tF[i];
+        c.U[col[i]] = tB[3 - i];
+      }
+      c.B[bCol[0]] = tD[3]; c.B[bCol[1]] = tD[2];
+      c.B[bCol[2]] = tD[1]; c.B[bCol[3]] = tD[0];
+      break;
+    }
+    case 'r2': return applyMove4x4(applyMove4x4(cube, 'r'), 'r');
+
+    // ===== Inner l (col [1,5,9,13], same dir as L) =====
+    case 'l': {
+      const col = [1, 5, 9, 13];
+      const bCol = [14, 10, 6, 2]; // B 2nd col from right, reversed
+      const tU = col.map(j => cube.U[j]);
+      const tF = col.map(j => cube.F[j]);
+      const tD = col.map(j => cube.D[j]);
+      const tB = bCol.map(j => cube.B[j]);
+      for (let i = 0; i < 4; i++) {
+        c.F[col[i]] = tU[i];
+        c.D[col[i]] = tF[i];
+        c.U[col[i]] = tB[3 - i];
+      }
+      c.B[bCol[0]] = tD[3]; c.B[bCol[1]] = tD[2];
+      c.B[bCol[2]] = tD[1]; c.B[bCol[3]] = tD[0];
+      break;
+    }
+    case "l'": {
+      const col = [1, 5, 9, 13];
+      const bCol = [14, 10, 6, 2];
+      const tU = col.map(j => cube.U[j]);
+      const tF = col.map(j => cube.F[j]);
+      const tD = col.map(j => cube.D[j]);
+      const tB = bCol.map(j => cube.B[j]);
+      for (let i = 0; i < 4; i++) {
+        c.U[col[i]] = tF[i];
+        c.F[col[i]] = tD[i];
+        c.D[col[i]] = tB[3 - i];
+      }
+      c.B[bCol[0]] = tU[3]; c.B[bCol[1]] = tU[2];
+      c.B[bCol[2]] = tU[1]; c.B[bCol[3]] = tU[0];
+      break;
+    }
+    case 'l2': return applyMove4x4(applyMove4x4(cube, 'l'), 'l');
+
+    // ===== Inner f (slice behind F: U row 8-11, R col [1,5,9,13], D row 4-7, L col [2,6,10,14]) =====
+    case 'f': {
+      const tU = [cube.U[8], cube.U[9], cube.U[10], cube.U[11]];
+      const tR = [cube.R[1], cube.R[5], cube.R[9], cube.R[13]];
+      const tD = [cube.D[4], cube.D[5], cube.D[6], cube.D[7]];
+      const tL = [cube.L[2], cube.L[6], cube.L[10], cube.L[14]];
+      for (let i = 0; i < 4; i++) {
+        c.R[1 + i * 4] = tU[i];
+        c.D[4 + i] = tR[3 - i];
+        c.L[i * 4 + 2] = tD[i];
+        c.U[8 + i] = tL[3 - i];
+      }
+      break;
+    }
+    case "f'": {
+      const tU = [cube.U[8], cube.U[9], cube.U[10], cube.U[11]];
+      const tR = [cube.R[1], cube.R[5], cube.R[9], cube.R[13]];
+      const tD = [cube.D[4], cube.D[5], cube.D[6], cube.D[7]];
+      const tL = [cube.L[2], cube.L[6], cube.L[10], cube.L[14]];
+      for (let i = 0; i < 4; i++) {
+        c.L[i * 4 + 2] = tU[3 - i];
+        c.U[8 + i] = tR[i];
+        c.R[1 + i * 4] = tD[3 - i];
+        c.D[4 + i] = tL[i];
+      }
+      break;
+    }
+    case 'f2': return applyMove4x4(applyMove4x4(cube, 'f'), 'f');
+
+    // ===== Inner b (slice behind B: U row 4-7, R col [2,6,10,14], D row 8-11, L col [1,5,9,13]) =====
+    case 'b': {
+      const tU = [cube.U[4], cube.U[5], cube.U[6], cube.U[7]];
+      const tR = [cube.R[2], cube.R[6], cube.R[10], cube.R[14]];
+      const tD = [cube.D[8], cube.D[9], cube.D[10], cube.D[11]];
+      const tL = [cube.L[1], cube.L[5], cube.L[9], cube.L[13]];
+      for (let i = 0; i < 4; i++) {
+        c.R[i * 4 + 2] = tU[i];
+        c.D[8 + i] = tR[i];
+        c.L[1 + i * 4] = tD[3 - i];
+        c.U[4 + i] = tL[3 - i];
+      }
+      break;
+    }
+    case "b'": {
+      c.B = cube.B; // no face rotation for inner
+      const tU = [cube.U[4], cube.U[5], cube.U[6], cube.U[7]];
+      const tR = [cube.R[2], cube.R[6], cube.R[10], cube.R[14]];
+      const tD = [cube.D[8], cube.D[9], cube.D[10], cube.D[11]];
+      const tL = [cube.L[1], cube.L[5], cube.L[9], cube.L[13]];
+      for (let i = 0; i < 4; i++) {
+        c.L[1 + i * 4] = tU[i];
+        c.U[4 + i] = tR[3 - i];
+        c.R[i * 4 + 2] = tD[3 - i];
+        c.D[8 + i] = tL[i];
+      }
+      break;
+    }
+    case 'b2': return applyMove4x4(applyMove4x4(cube, 'b'), 'b');
+
     default:
-      // For other moves, just return unchanged for now
-      return newCube;
+      return c;
   }
-  
-  return newCube;
+
+  return c;
 };
 
 export const applyMoves4x4 = (cube: CubeState4x4, moves: Move4x4[]): CubeState4x4 => {
@@ -159,18 +379,18 @@ export const generateScramble4x4 = (length: number = 40): Move4x4[] => {
   const modifiers: ('' | "'" | '2')[] = ['', "'", '2'];
   const moves: Move4x4[] = [];
   let lastFace = '';
-  
+
   for (let i = 0; i < length; i++) {
     let face: string;
     do {
       face = faces[Math.floor(Math.random() * faces.length)];
     } while (face === lastFace);
-    
+
     const modifier = modifiers[Math.floor(Math.random() * modifiers.length)];
     moves.push((face + modifier) as Move4x4);
     lastFace = face;
   }
-  
+
   return moves;
 };
 
@@ -183,26 +403,4 @@ export const isSolved4x4 = (cube: CubeState4x4): boolean => {
     cube.L.every(c => c === cube.L[0]) &&
     cube.R.every(c => c === cube.R[0])
   );
-};
-
-// 4x4 solving is computationally intensive
-// This is a placeholder - real implementation would use reduction method
-export const solve4x4 = async (cube: CubeState4x4): Promise<{ 
-  success: boolean; 
-  solution?: Move4x4[]; 
-  error?: string 
-}> => {
-  if (isSolved4x4(cube)) {
-    return { success: true, solution: [] };
-  }
-  
-  // 4x4 solving is beyond simple BFS/IDA*
-  // Would require implementing the reduction method:
-  // 1. Solve centers
-  // 2. Pair edges
-  // 3. Solve like 3x3
-  return { 
-    success: false, 
-    error: '4x4 solver is coming soon. This requires the reduction method implementation.' 
-  };
 };

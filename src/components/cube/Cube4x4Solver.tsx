@@ -152,14 +152,6 @@ export const Cube4x4Solver = () => {
               {isSolving ? (<><Loader2 className="w-5 h-5 animate-spin" /> Solving...</>) : (<><Sparkles className="w-5 h-5" /> Solve</>)}
             </button>
 
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/20 text-warning text-sm"
-            >
-              <Construction className="w-4 h-4 mt-0.5 flex-shrink-0" />
-              4×4 solver is in development. The reduction method solver will be added soon.
-            </motion.div>
 
             {error && (
               <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">

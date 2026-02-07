@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { CubeState4x4, Move4x4, CubeColor4x4, SOLVED_CUBE_4X4 } from '@/types/cube4x4';
-import { applyMove4x4, applyMoves4x4, generateScramble4x4, cloneCube4x4, isSolved4x4, solve4x4 } from '@/lib/cube4x4Utils';
+import { applyMove4x4, applyMoves4x4, generateScramble4x4, cloneCube4x4, isSolved4x4 } from '@/lib/cube4x4Utils';
+import { solve4x4Reduction } from '@/lib/cube4x4Solver';
 
 export const useCube4x4 = () => {
   const [cube, setCube] = useState<CubeState4x4>(cloneCube4x4(SOLVED_CUBE_4X4));
@@ -57,7 +58,7 @@ export const useCube4x4 = () => {
     setCurrentStep(0);
 
     try {
-      const result = await solve4x4(cube);
+      const result = await solve4x4Reduction(cube);
       
       if (result.success && result.solution) {
         setSolution(result.solution);

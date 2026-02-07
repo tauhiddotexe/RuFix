@@ -4,7 +4,8 @@ import { SOLVED_CUBE_2X2 } from '@/types/cube2x2';
 import { solveCube } from '@/lib/cubeSolver';
 import { applyMoves, generateScramble, isSolved, cloneCube } from '@/lib/cubeUtils';
 import { SOLVED_CUBE } from '@/types/cube';
-import { cloneCube4x4, applyMoves4x4, generateScramble4x4, isSolved4x4, solve4x4 } from '@/lib/cube4x4Utils';
+import { cloneCube4x4, applyMoves4x4, generateScramble4x4, isSolved4x4 } from '@/lib/cube4x4Utils';
+import { solve4x4Reduction } from '@/lib/cube4x4Solver';
 import { SOLVED_CUBE_4X4 } from '@/types/cube4x4';
 
 describe('2x2 Solver', () => {

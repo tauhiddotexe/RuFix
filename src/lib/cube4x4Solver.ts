@@ -1,6 +1,7 @@
 import { CubeState4x4, Move4x4, CubeColor4x4, SOLVED_CUBE_4X4 } from '@/types/cube4x4';
 import { CubeState, Move, SOLVED_CUBE } from '@/types/cube';
 import { applyMove4x4, applyMoves4x4, cloneCube4x4, isSolved4x4 } from './cube4x4Utils';
+import { applyMove, isSolved } from './cubeUtils';
 import { solveCube } from './cubeSolver';
 
 // ── Helpers ──────────────────────────────────────────────
@@ -281,76 +282,22 @@ function mapTo3x3(cube: CubeState4x4): CubeState {
   return result;
 }
 
-function solveAs3x3(cube: CubeState4x4, timeout: number): { cube: CubeState4x4; moves: Move4x4[] } | null {
+async function solveAs3x3(cube: CubeState4x4): Promise<{ cube: CubeState4x4; moves: Move4x4[] } | null> {
   const cube3x3 = mapTo3x3(cube);
 
-  // Check if the 3x3 representation is already solved
   const allSame = FACES.every(f => cube3x3[f].every((c: any) => c === cube3x3[f][0]));
   if (allSame) return { cube, moves: [] };
 
   try {
-    // Use synchronous approach - solveCube returns a promise but we handle it
-    const result = solveCubeSync(cube3x3, timeout);
-    if (!result) return null;
+    const result = await solveCube(cube3x3);
+    if (!result.success || !result.solution) return null;
 
-    // Apply the 3x3 solution as outer moves on the 4x4
-    let current = cloneCube4x4(cube);
-    const moves4x4: Move4x4[] = result.map(m => m as Move4x4);
-    current = applyMoves4x4(current, moves4x4);
+    const moves4x4: Move4x4[] = result.solution.map(m => m as Move4x4);
+    const current = applyMoves4x4(cloneCube4x4(cube), moves4x4);
     return { cube: current, moves: moves4x4 };
   } catch {
     return null;
   }
-}
-
-// Synchronous 3x3 solver (simplified IDA*)
-function solveCubeSync(cube: CubeState, timeout: number): Move[] | null {
-  const { applyMove, isSolved } = require('./cubeUtils');
-
-  if (isSolved(cube)) return [];
-
-  const ALL_MOVES: Move[] = [
-    'F', "F'", 'F2', 'R', "R'", 'R2', 'U', "U'", 'U2',
-    'B', "B'", 'B2', 'L', "L'", 'L2', 'D', "D'", 'D2',
-  ];
-
-  const start = Date.now();
-  const visited = new Map<string, number>();
-
-  const cubeStr = (c: CubeState) => Object.values(c).flat().join('');
-
-  const search = (c: CubeState, moves: Move[], depth: number, last: Move | null): Move[] | null => {
-    if (isSolved(c)) return moves;
-    if (depth === 0 || Date.now() - start > timeout) return null;
-
-    const key = cubeStr(c);
-    const prev = visited.get(key);
-    if (prev !== undefined && prev >= depth) return null;
-    visited.set(key, depth);
-
-    for (const move of ALL_MOVES) {
-      if (last && last[0] === move[0]) continue;
-      if (last) {
-        const lf = last[0], cf = move[0];
-        if ((lf === 'F' && cf === 'B') || (lf === 'R' && cf === 'L') || (lf === 'U' && cf === 'D')) {
-          if (lf > cf) continue;
-        }
-      }
-      const nc = applyMove(c, move);
-      const result = search(nc, [...moves, move], depth - 1, move);
-      if (result) return result;
-    }
-    return null;
-  };
-
-  for (let depth = 1; depth <= 20; depth++) {
-    visited.clear();
-    const result = search(cube, [], depth, null);
-    if (result) return result;
-    if (Date.now() - start > timeout) break;
-  }
-
-  return null;
 }
 
 // ── Main Solver ─────────────────────────────────────────────
@@ -362,32 +309,21 @@ export async function solve4x4Reduction(cube: CubeState4x4): Promise<{
 }> {
   if (isSolved4x4(cube)) return { success: true, solution: [] };
 
-  const totalTimeout = 8000;
-  const start = Date.now();
-
-  // Phase 1: Solve centers
-  const centerResult = solveCenters(cube, totalTimeout * 0.4);
+  const centerResult = solveCenters(cube, 5000);
   if (!centerResult) {
     return { success: false, error: 'Could not solve centers. Try a shorter scramble or check cube configuration.' };
   }
 
-  const remaining1 = totalTimeout - (Date.now() - start);
-
-  // Phase 2: Pair edges
-  const edgeResult = pairEdges(centerResult.cube, Math.min(remaining1, totalTimeout * 0.35));
+  const edgeResult = pairEdges(centerResult.cube, 5000);
   if (!edgeResult) {
     return { success: false, error: 'Could not pair edges. Try a shorter scramble.' };
   }
 
-  const remaining2 = totalTimeout - (Date.now() - start);
-
-  // Phase 3: Solve as 3x3
-  const finalResult = solveAs3x3(edgeResult.cube, Math.min(remaining2, totalTimeout * 0.25));
+  const finalResult = await solveAs3x3(edgeResult.cube);
   if (!finalResult) {
     return { success: false, error: 'Could not complete 3x3 phase. Try a shorter scramble.' };
   }
 
-  // Check if actually solved
   if (!isSolved4x4(finalResult.cube)) {
     return { success: false, error: 'Solver did not fully solve the cube. Try a shorter scramble.' };
   }

@@ -69,13 +69,6 @@ export const applyMove4x4 = (cube: CubeState4x4, move: Move4x4): CubeState4x4 =>
     case 'R': {
       c.R = rotateFaceCW(cube.R);
       const col = [3, 7, 11, 15];
-      for (let i = 0; i < 4; i++) {
-        c.U[col[i]] = cube.F[col[i]];
-        c.F[col[i]] = cube.D[col[i]];
-        c.D[col[i]] = cube.B[col[3 - i]];
-        c.B[col[3 - i]] = cube.U[col[i]];
-      }
-      // Fix: B uses left col reversed
       const tU = col.map(j => cube.U[j]);
       const tF = col.map(j => cube.F[j]);
       const tD = col.map(j => cube.D[j]);

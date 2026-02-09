@@ -289,7 +289,8 @@ async function solveAs3x3(cube: CubeState4x4): Promise<{ cube: CubeState4x4; mov
   if (allSame) return { cube, moves: [] };
 
   try {
-    const result = await solveCube(cube3x3);
+    // Skip validation (cube came from valid 4x4 reduction) and give extra time
+    const result = await solveCube(cube3x3, { skipValidation: true, timeLimitMs: 15000 });
     if (!result.success || !result.solution) return null;
 
     const moves4x4: Move4x4[] = result.solution.map(m => m as Move4x4);

@@ -61,11 +61,25 @@ export const validateCube = (cube: CubeState): { valid: boolean; error?: string 
   return { valid: true };
 };
 
-// Simple IDA* search with limited depth
+// Admissible heuristic: count misplaced stickers / 20
+// Each move affects at most 20 non-center stickers, so this is a valid lower bound
+const heuristic = (cube: CubeState): number => {
+  let misplaced = 0;
+  const faces: (keyof CubeState)[] = ['U', 'D', 'F', 'B', 'L', 'R'];
+  for (const face of faces) {
+    const center = cube[face][4];
+    for (let i = 0; i < 9; i++) {
+      if (i !== 4 && cube[face][i] !== center) misplaced++;
+    }
+  }
+  return Math.ceil(misplaced / 20);
+};
+
+// IDA* search with heuristic pruning
 const idaSearch = (
   startCube: CubeState,
   maxDepth: number = 20,
-  timeLimitMs: number = 8000
+  timeLimitMs: number = 10000
 ): Move[] | null => {
   if (isSolved(startCube)) return [];
   
@@ -81,11 +95,13 @@ const idaSearch = (
   ): boolean => {
     if (timedOut) return false;
     nodeCount++;
-    if (nodeCount % 50000 === 0 && Date.now() - startTime > timeLimitMs) {
+    if (nodeCount % 100000 === 0 && Date.now() - startTime > timeLimitMs) {
       timedOut = true;
       return false;
     }
     if (isSolved(cube)) return true;
+    // Prune: if remaining depth is less than the heuristic estimate, no solution here
+    if (heuristic(cube) > depth) return false;
     if (depth === 0) return false;
     
     for (const move of ALL_MOVES) {
@@ -111,7 +127,9 @@ const idaSearch = (
     return false;
   };
   
-  for (let depth = 1; depth <= maxDepth; depth++) {
+  // Start IDA* from the heuristic estimate instead of 1
+  const startDepth = Math.max(1, heuristic(startCube));
+  for (let depth = startDepth; depth <= maxDepth; depth++) {
     if (timedOut) break;
     path.length = 0;
     nodeCount = 0;
@@ -129,22 +147,24 @@ const solveLayerByLayer = (cube: CubeState): Move[] | null => {
 };
 
 // Main solve function
-export const solveCube = async (cube: CubeState): Promise<{ 
+export const solveCube = async (cube: CubeState, options?: { skipValidation?: boolean; timeLimitMs?: number }): Promise<{ 
   success: boolean; 
   solution?: Move[]; 
   error?: string 
 }> => {
-  const validation = validateCube(cube);
-  if (!validation.valid) {
-    return { success: false, error: validation.error };
+  if (!options?.skipValidation) {
+    const validation = validateCube(cube);
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
+    }
   }
   
   if (isSolved(cube)) {
     return { success: true, solution: [] };
   }
   
-  // Run solver
-  const solution = solveLayerByLayer(cube);
+  // Run solver with optional custom time limit
+  const solution = idaSearch(cube, 20, options?.timeLimitMs ?? 10000);
   
   if (solution) {
     return { success: true, solution };

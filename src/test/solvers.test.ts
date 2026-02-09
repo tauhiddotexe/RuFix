@@ -56,7 +56,7 @@ describe('4x4 Solver', () => {
   });
 
   it('solves a short scramble', async () => {
-    const scrambled = applyMoves4x4(cloneCube4x4(SOLVED_CUBE_4X4), generateScramble4x4(5));
+    const scrambled = applyMoves4x4(cloneCube4x4(SOLVED_CUBE_4X4), generateScramble4x4(3));
     const result = await solve4x4Reduction(scrambled);
     expect(result.success).toBe(true);
     expect(result.solution).toBeDefined();

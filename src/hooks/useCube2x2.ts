@@ -20,7 +20,7 @@ export const useCube2x2 = () => {
   }, []);
 
   const scramble = useCallback(() => {
-    const moves = generateScramble2x2(10);
+    const moves = generateScramble2x2(5);
     setCube(applyMoves2x2(cloneCube2x2(SOLVED_CUBE_2X2), moves));
     setSolution(null);
     setCurrentStep(0);

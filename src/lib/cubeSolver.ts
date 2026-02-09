@@ -64,10 +64,13 @@ export const validateCube = (cube: CubeState): { valid: boolean; error?: string 
 // Simple IDA* search with limited depth
 const idaSearch = (
   startCube: CubeState,
-  maxDepth: number = 25
+  maxDepth: number = 12,
+  timeLimitMs: number = 5000
 ): Move[] | null => {
   if (isSolved(startCube)) return [];
   
+  const startTime = Date.now();
+  let timedOut = false;
   const visited = new Map<string, number>();
   
   const cubeToString = (cube: CubeState): string => {
@@ -80,6 +83,11 @@ const idaSearch = (
     depth: number,
     lastMove: Move | null
   ): Move[] | null => {
+    if (timedOut) return null;
+    if (Date.now() - startTime > timeLimitMs) {
+      timedOut = true;
+      return null;
+    }
     if (isSolved(cube)) return moves;
     if (depth === 0) return null;
     
@@ -89,12 +97,10 @@ const idaSearch = (
     visited.set(cubeStr, depth);
     
     for (const move of ALL_MOVES) {
-      // Skip redundant moves
       if (lastMove) {
         const lastFace = lastMove[0];
         const currentFace = move[0];
         if (lastFace === currentFace) continue;
-        // Skip opposite face moves in wrong order
         if (
           (lastFace === 'F' && currentFace === 'B') ||
           (lastFace === 'R' && currentFace === 'L') ||
@@ -112,8 +118,8 @@ const idaSearch = (
     return null;
   };
   
-  // Iterative deepening
   for (let depth = 1; depth <= maxDepth; depth++) {
+    if (timedOut) break;
     visited.clear();
     const result = search(startCube, [], depth, null);
     if (result) return result;
@@ -126,7 +132,7 @@ const idaSearch = (
 const solveLayerByLayer = (cube: CubeState): Move[] | null => {
   // For production: implement CFOP or Kociemba properly
   // This is a placeholder that uses brute-force for short solutions
-  return idaSearch(cube, 22);
+  return idaSearch(cube, 20, 8000);
 };
 
 // Main solve function

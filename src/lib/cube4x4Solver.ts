@@ -310,12 +310,12 @@ export async function solve4x4Reduction(cube: CubeState4x4): Promise<{
   if (isSolved4x4(cube)) return { success: true, solution: [] };
 
   try {
-    const centerResult = solveCenters(cube, 4000);
+    const centerResult = solveCenters(cube, 8000);
     if (!centerResult) {
       return { success: false, error: 'Could not solve centers. Try a shorter scramble or check cube configuration.' };
     }
 
-    const edgeResult = pairEdges(centerResult.cube, 4000);
+    const edgeResult = pairEdges(centerResult.cube, 8000);
     if (!edgeResult) {
       return { success: false, error: 'Could not pair edges. Try a shorter scramble.' };
     }

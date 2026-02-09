@@ -188,10 +188,13 @@ export const solve2x2 = (cube: CubeState2x2): Move2x2[] | null => {
   
   visited.add(cubeToString(cube));
   
+  const startTime = Date.now();
+  
   while (queue.length > 0) {
+    if (Date.now() - startTime > 5000) return null; // time bailout
     const current = queue.shift()!;
     
-    if (current.moves.length > 11) continue; // 2x2 God's number is 11
+    if (current.moves.length > 8) continue; // limit depth for performance
     
     for (const move of ALL_MOVES) {
       // Skip redundant moves

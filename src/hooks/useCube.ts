@@ -20,7 +20,7 @@ export const useCube = () => {
   }, []);
 
   const scramble = useCallback(() => {
-    const moves = generateScramble(6);
+    const moves = generateScramble(4);
     setCube(applyMoves(cloneCube(SOLVED_CUBE), moves));
     setSolution(null);
     setCurrentStep(0);
@@ -58,7 +58,7 @@ export const useCube = () => {
     setCurrentStep(0);
 
     try {
-      const result = await solveWithTimeout(cube, 10000);
+      const result = await solveWithTimeout(cube, 15000);
       
       if (result.success && result.solution) {
         setSolution(result.solution);

@@ -76,7 +76,7 @@ export const applyMove4x4 = (cube: CubeState4x4, move: Move4x4): CubeState4x4 =>
       for (let i = 0; i < 4; i++) {
         c.U[col[i]] = tF[i];
         c.F[col[i]] = tD[i];
-        c.D[col[i]] = tB[3 - i];
+        c.D[col[i]] = tB[i];
       }
       c.B[12] = tU[0]; c.B[8] = tU[1]; c.B[4] = tU[2]; c.B[0] = tU[3];
       break;
@@ -91,7 +91,7 @@ export const applyMove4x4 = (cube: CubeState4x4, move: Move4x4): CubeState4x4 =>
       for (let i = 0; i < 4; i++) {
         c.F[col[i]] = tU[i];
         c.D[col[i]] = tF[i];
-        c.U[col[i]] = tB[3 - i];
+        c.U[col[i]] = tB[i];
       }
       c.B[12] = tD[0]; c.B[8] = tD[1]; c.B[4] = tD[2]; c.B[0] = tD[3];
       break;
@@ -109,7 +109,7 @@ export const applyMove4x4 = (cube: CubeState4x4, move: Move4x4): CubeState4x4 =>
       for (let i = 0; i < 4; i++) {
         c.F[col[i]] = tU[i];
         c.D[col[i]] = tF[i];
-        c.U[col[i]] = tB[3 - i];
+        c.U[col[i]] = tB[i];
       }
       c.B[15] = tD[0]; c.B[11] = tD[1]; c.B[7] = tD[2]; c.B[3] = tD[3];
       break;
@@ -124,7 +124,7 @@ export const applyMove4x4 = (cube: CubeState4x4, move: Move4x4): CubeState4x4 =>
       for (let i = 0; i < 4; i++) {
         c.U[col[i]] = tF[i];
         c.F[col[i]] = tD[i];
-        c.D[col[i]] = tB[3 - i];
+        c.D[col[i]] = tB[i];
       }
       c.B[15] = tU[0]; c.B[11] = tU[1]; c.B[7] = tU[2]; c.B[3] = tU[3];
       break;
@@ -238,7 +238,7 @@ export const applyMove4x4 = (cube: CubeState4x4, move: Move4x4): CubeState4x4 =>
       for (let i = 0; i < 4; i++) {
         c.U[col[i]] = tF[i];
         c.F[col[i]] = tD[i];
-        c.D[col[i]] = tB[3 - i];
+        c.D[col[i]] = tB[i];
       }
       c.B[bCol[0]] = tU[3]; c.B[bCol[1]] = tU[2];
       c.B[bCol[2]] = tU[1]; c.B[bCol[3]] = tU[0];
@@ -254,7 +254,7 @@ export const applyMove4x4 = (cube: CubeState4x4, move: Move4x4): CubeState4x4 =>
       for (let i = 0; i < 4; i++) {
         c.F[col[i]] = tU[i];
         c.D[col[i]] = tF[i];
-        c.U[col[i]] = tB[3 - i];
+        c.U[col[i]] = tB[i];
       }
       c.B[bCol[0]] = tD[3]; c.B[bCol[1]] = tD[2];
       c.B[bCol[2]] = tD[1]; c.B[bCol[3]] = tD[0];
@@ -273,7 +273,7 @@ export const applyMove4x4 = (cube: CubeState4x4, move: Move4x4): CubeState4x4 =>
       for (let i = 0; i < 4; i++) {
         c.F[col[i]] = tU[i];
         c.D[col[i]] = tF[i];
-        c.U[col[i]] = tB[3 - i];
+        c.U[col[i]] = tB[i];
       }
       c.B[bCol[0]] = tD[3]; c.B[bCol[1]] = tD[2];
       c.B[bCol[2]] = tD[1]; c.B[bCol[3]] = tD[0];
@@ -289,7 +289,7 @@ export const applyMove4x4 = (cube: CubeState4x4, move: Move4x4): CubeState4x4 =>
       for (let i = 0; i < 4; i++) {
         c.U[col[i]] = tF[i];
         c.F[col[i]] = tD[i];
-        c.D[col[i]] = tB[3 - i];
+        c.D[col[i]] = tB[i];
       }
       c.B[bCol[0]] = tU[3]; c.B[bCol[1]] = tU[2];
       c.B[bCol[2]] = tU[1]; c.B[bCol[3]] = tU[0];

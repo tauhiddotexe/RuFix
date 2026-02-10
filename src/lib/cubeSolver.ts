@@ -79,7 +79,7 @@ const heuristic = (cube: CubeState): number => {
 const idaSearch = (
   startCube: CubeState,
   maxDepth: number = 20,
-  timeLimitMs: number = 10000
+  timeLimitMs: number = 15000
 ): Move[] | null => {
   if (isSolved(startCube)) return [];
   
@@ -95,7 +95,7 @@ const idaSearch = (
   ): boolean => {
     if (timedOut) return false;
     nodeCount++;
-    if (nodeCount % 100000 === 0 && Date.now() - startTime > timeLimitMs) {
+    if (nodeCount % 10000 === 0 && Date.now() - startTime > timeLimitMs) {
       timedOut = true;
       return false;
     }
@@ -164,7 +164,7 @@ export const solveCube = async (cube: CubeState, options?: { skipValidation?: bo
   }
   
   // Run solver with optional custom time limit
-  const solution = idaSearch(cube, 20, options?.timeLimitMs ?? 10000);
+  const solution = idaSearch(cube, 20, options?.timeLimitMs ?? 15000);
   
   if (solution) {
     return { success: true, solution };
@@ -172,14 +172,14 @@ export const solveCube = async (cube: CubeState, options?: { skipValidation?: bo
   
   return { 
     success: false, 
-    error: 'Could not find solution. The cube may be in an impossible state.' 
+    error: 'Solver timed out. Try clicking Scramble again for a different configuration.' 
   };
 };
 
 // Optimized solver using precomputed moves
 export const solveWithTimeout = (
   cube: CubeState,
-  timeoutMs: number = 5000
+  timeoutMs: number = 15000
 ): Promise<{ success: boolean; solution?: Move[]; error?: string }> => {
   return new Promise((resolve) => {
     const timeout = setTimeout(() => {

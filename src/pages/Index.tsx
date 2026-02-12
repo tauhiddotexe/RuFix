@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Shuffle, RotateCcw, Sparkles, Loader2, AlertCircle, Camera } from 'lucide-react';
 import { useCube } from '@/hooks/useCube';
@@ -12,7 +12,7 @@ import { Header } from '@/components/Header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Cube2x2Solver } from '@/components/cube/Cube2x2Solver';
 import { Cube4x4Solver } from '@/components/cube/Cube4x4Solver';
-import { CubeColor, CubeState } from '@/types/cube';
+import { CubeColor, CubeState, Move } from '@/types/cube';
 
 type ViewMode = '3d' | 'net';
 
@@ -41,9 +41,23 @@ const Cube3x3Solver = () => {
   const [selectedColor, setSelectedColor] = useState<CubeColor | null>(null);
   const [rotation, setRotation] = useState({ x: -25, y: -35 });
   const [showScanner, setShowScanner] = useState(false);
+  const [activeMove, setActiveMove] = useState<Move | null>(null);
+  const activeMoveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showMoveArrow = useCallback((move: Move) => {
+    if (activeMoveTimer.current) clearTimeout(activeMoveTimer.current);
+    setActiveMove(move);
+    activeMoveTimer.current = setTimeout(() => setActiveMove(null), 500);
+  }, []);
+
+  const handleManualMove = useCallback((move: Move) => {
+    showMoveArrow(move);
+    executeMove(move);
+  }, [executeMove, showMoveArrow]);
 
   useEffect(() => {
     if (isPlaying && solution && currentStep < solution.length) {
+      showMoveArrow(solution[currentStep]);
       const timer = setTimeout(() => {
         stepForward();
       }, 600);
@@ -51,7 +65,14 @@ const Cube3x3Solver = () => {
     } else if (isPlaying && solution && currentStep >= solution.length) {
       setIsPlaying(false);
     }
-  }, [isPlaying, currentStep, solution, stepForward, setIsPlaying]);
+  }, [isPlaying, currentStep, solution, stepForward, setIsPlaying, showMoveArrow]);
+
+  const handleStepForward = useCallback(() => {
+    if (solution && currentStep < solution.length) {
+      showMoveArrow(solution[currentStep]);
+    }
+    stepForward();
+  }, [solution, currentStep, stepForward, showMoveArrow]);
 
   const handleResetSolution = () => {
     if (solution) {
@@ -72,7 +93,7 @@ const Cube3x3Solver = () => {
           onClose={() => setShowScanner(false)}
         />
       )}
-      
+
       <div className="grid lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
         {/* Left Column - Cube Visualization */}
         <div className="space-y-6">
@@ -80,21 +101,19 @@ const Cube3x3Solver = () => {
           <div className="flex gap-2">
             <button
               onClick={() => setViewMode('3d')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                viewMode === '3d'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-              }`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${viewMode === '3d'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                }`}
             >
               3D View
             </button>
             <button
               onClick={() => setViewMode('net')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                viewMode === 'net'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-              }`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${viewMode === 'net'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                }`}
             >
               Flat View
             </button>
@@ -108,18 +127,19 @@ const Cube3x3Solver = () => {
           </div>
 
           {/* Cube display */}
-          <motion.div 
+          <motion.div
             className="glass-panel p-8 flex items-center justify-center min-h-[320px]"
             layout
           >
             {viewMode === '3d' ? (
-              <Cube3D 
-                cube={cube} 
-                rotationX={rotation.x} 
-                rotationY={rotation.y} 
+              <Cube3D
+                cube={cube}
+                rotationX={rotation.x}
+                rotationY={rotation.y}
+                activeMove={activeMove}
               />
             ) : (
-              <CubeNet 
+              <CubeNet
                 cube={cube}
                 onCellClick={selectedColor ? (face, index) => setFaceColor(face, index, selectedColor) : undefined}
                 selectedColor={selectedColor}
@@ -189,8 +209,8 @@ const Cube3x3Solver = () => {
 
           {/* Move controls */}
           <div className="glass-panel p-6">
-            <MoveControls 
-              onMove={executeMove} 
+            <MoveControls
+              onMove={handleManualMove}
               disabled={isSolving || isPlaying}
             />
           </div>
@@ -215,7 +235,7 @@ const Cube3x3Solver = () => {
                 Reset
               </button>
             </div>
-            
+
             <button
               onClick={solve}
               disabled={isSolving || isCubeSolved || isPlaying}
@@ -252,7 +272,7 @@ const Cube3x3Solver = () => {
             solution={solution}
             currentStep={currentStep}
             isPlaying={isPlaying}
-            onStepForward={stepForward}
+            onStepForward={handleStepForward}
             onStepBackward={stepBackward}
             onJumpToStep={jumpToStep}
             onPlayPause={() => setIsPlaying(!isPlaying)}
@@ -293,7 +313,7 @@ const Index = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      
+
       <main className="flex-1 container mx-auto px-4 py-8">
         <Tabs defaultValue="3x3" className="w-full">
           <TabsList className="grid w-full max-w-md mx-auto grid-cols-3 mb-8">
@@ -301,15 +321,15 @@ const Index = () => {
             <TabsTrigger value="3x3">3×3 Cube</TabsTrigger>
             <TabsTrigger value="4x4">4×4 Cube</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="2x2">
             <Cube2x2Solver />
           </TabsContent>
-          
+
           <TabsContent value="3x3">
             <Cube3x3Solver />
           </TabsContent>
-          
+
           <TabsContent value="4x4">
             <Cube4x4Solver />
           </TabsContent>

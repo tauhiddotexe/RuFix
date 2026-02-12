@@ -367,21 +367,29 @@ export const applyMoves4x4 = (cube: CubeState4x4, moves: Move4x4[]): CubeState4x
   return moves.reduce((state, move) => applyMove4x4(state, move), cube);
 };
 
-export const generateScramble4x4 = (length: number = 40): Move4x4[] => {
-  const faces: ('F' | 'R' | 'U' | 'B' | 'L' | 'D')[] = ['F', 'R', 'U', 'B', 'L', 'D'];
-  const modifiers: ('' | "'" | '2')[] = ['', "'", '2'];
+export const invertMove4x4 = (move: Move4x4): Move4x4 => {
+  if (move.includes('2')) return move;
+  if (move.includes("'")) return move.replace("'", '') as Move4x4;
+  return (move + "'") as Move4x4;
+};
+
+export const invertSequence4x4 = (moves: Move4x4[]): Move4x4[] => {
+  return moves.map(invertMove4x4).reverse();
+};
+
+export const generateScramble4x4 = (): Move4x4[] => {
+  const movePool: Move4x4[] = ['R', "R'", 'U', "U'"];
+  const length = 3 + Math.floor(Math.random() * 2); // 3 or 4
   const moves: Move4x4[] = [];
   let lastFace = '';
 
   for (let i = 0; i < length; i++) {
-    let face: string;
+    let move: Move4x4;
     do {
-      face = faces[Math.floor(Math.random() * faces.length)];
-    } while (face === lastFace);
-
-    const modifier = modifiers[Math.floor(Math.random() * modifiers.length)];
-    moves.push((face + modifier) as Move4x4);
-    lastFace = face;
+      move = movePool[Math.floor(Math.random() * movePool.length)];
+    } while (move[0] === lastFace);
+    moves.push(move);
+    lastFace = move[0];
   }
 
   return moves;

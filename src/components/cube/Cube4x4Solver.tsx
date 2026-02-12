@@ -5,6 +5,7 @@ import { useCube4x4 } from '@/hooks/useCube4x4';
 import { Cube4x43D } from '@/components/cube/Cube4x43D';
 import { Cube4x4Net } from '@/components/cube/Cube4x4Net';
 import { ColorPicker } from '@/components/cube/ColorPicker';
+import { SolutionDisplay } from '@/components/cube/SolutionDisplay';
 import { CameraScanner } from '@/components/cube/CameraScanner';
 import { CubeColor } from '@/types/cube';
 import { CubeState4x4, Move4x4 } from '@/types/cube4x4';
@@ -42,6 +43,19 @@ export const Cube4x4Solver = () => {
     setShowScanner(false);
   };
 
+  useEffect(() => {
+    if (isPlaying && solution && currentStep < solution.length) {
+      const timer = setTimeout(() => stepForward(), 600);
+      return () => clearTimeout(timer);
+    } else if (isPlaying && solution && currentStep >= solution.length) {
+      setIsPlaying(false);
+    }
+  }, [isPlaying, currentStep, solution, stepForward, setIsPlaying]);
+
+  const handleResetSolution = () => {
+    if (solution) jumpToStep(0);
+  };
+
   const MOVES: Move4x4[] = ['F', "F'", 'R', "R'", 'U', "U'", 'B', "B'", 'L', "L'", 'D', "D'"];
 
   return (
@@ -59,17 +73,15 @@ export const Cube4x4Solver = () => {
           <div className="flex gap-2">
             <button
               onClick={() => setViewMode('3d')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                viewMode === '3d' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-              }`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${viewMode === '3d' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                }`}
             >
               3D View
             </button>
             <button
               onClick={() => setViewMode('net')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                viewMode === 'net' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-              }`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${viewMode === 'net' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                }`}
             >
               Flat View
             </button>
@@ -147,7 +159,7 @@ export const Cube4x4Solver = () => {
                 <RotateCcw className="w-4 h-4" /> Reset
               </button>
             </div>
-            
+
             <button onClick={solve} disabled={isSolving || isCubeSolved || isPlaying} className="action-btn-primary w-full flex items-center justify-center gap-2 text-lg py-4">
               {isSolving ? (<><Loader2 className="w-5 h-5 animate-spin" /> Solving...</>) : (<><Sparkles className="w-5 h-5" /> Solve</>)}
             </button>
@@ -159,6 +171,17 @@ export const Cube4x4Solver = () => {
               </motion.div>
             )}
           </div>
+
+          <SolutionDisplay
+            solution={solution as any}
+            currentStep={currentStep}
+            isPlaying={isPlaying}
+            onStepForward={stepForward}
+            onStepBackward={stepBackward}
+            onJumpToStep={jumpToStep}
+            onPlayPause={() => setIsPlaying(!isPlaying)}
+            onReset={handleResetSolution}
+          />
         </div>
       </div>
     </>

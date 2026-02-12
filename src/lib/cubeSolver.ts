@@ -1,156 +1,83 @@
 import { CubeState, Move, CubeColor } from '@/types/cube';
-import { applyMove, cloneCube, isSolved } from './cubeUtils';
+import { isSolved } from './cubeUtils';
+import Cube from 'cubejs';
 
-// Kociemba-inspired two-phase solver
-// Phase 1: Reduce to <U,D,R2,L2,F2,B2> subgroup
-// Phase 2: Solve within subgroup
+// Initialize cubejs lookup tables once
+Cube.initSolver();
 
-// Move tables and pruning tables would be precomputed in production
-// This is a simplified implementation using CFOP-like layer-by-layer approach
-
-type SolverState = {
-  cube: CubeState;
-  moves: Move[];
+// Mapping from CubeColor to cubejs facelet character
+const COLOR_TO_FACELET: Record<CubeColor, string> = {
+  W: 'U', // White = Up
+  B: 'R', // Blue  = Right
+  R: 'F', // Red   = Front
+  Y: 'D', // Yellow = Down
+  G: 'L', // Green = Left
+  O: 'B', // Orange = Back
 };
 
-const ALL_MOVES: Move[] = [
-  'F', "F'", 'F2',
-  'R', "R'", 'R2',
-  'U', "U'", 'U2',
-  'B', "B'", 'B2',
-  'L', "L'", 'L2',
-  'D', "D'", 'D2',
-];
+// Convert CubeState to cubejs 54-char facelet string (URFDLB order)
+const cubeStateToFaceletString = (cube: CubeState): string => {
+  const faceOrder: (keyof CubeState)[] = ['U', 'R', 'F', 'D', 'L', 'B'];
+  let faceletStr = '';
+  for (const face of faceOrder) {
+    for (const color of cube[face]) {
+      faceletStr += COLOR_TO_FACELET[color];
+    }
+  }
+  return faceletStr;
+};
+
+// Parse cubejs solution string (e.g. "R U' F2 D") into Move[]
+const parseCubejsSolution = (solutionStr: string): Move[] => {
+  const trimmed = solutionStr.trim();
+  if (trimmed === '') return [];
+  return trimmed.split(/\s+/) as Move[];
+};
 
 // Check if the cube configuration is valid
 export const validateCube = (cube: CubeState): { valid: boolean; error?: string } => {
   // Count colors
   const colorCount: Record<CubeColor, number> = { W: 0, Y: 0, R: 0, O: 0, B: 0, G: 0 };
-  
+
   const faces: (keyof CubeState)[] = ['U', 'D', 'F', 'B', 'L', 'R'];
   for (const face of faces) {
     for (const color of cube[face]) {
       colorCount[color]++;
     }
   }
-  
+
   // Each color should appear exactly 9 times
   for (const color of Object.keys(colorCount) as CubeColor[]) {
     if (colorCount[color] !== 9) {
-      return { 
-        valid: false, 
-        error: `Each color must appear exactly 9 times. ${color} appears ${colorCount[color]} times.` 
+      return {
+        valid: false,
+        error: `Each color must appear exactly 9 times. ${color} appears ${colorCount[color]} times.`
       };
     }
   }
-  
+
   // Check center pieces (fixed in standard cube)
   const expectedCenters: Record<keyof CubeState, CubeColor> = {
     U: 'W', D: 'Y', F: 'R', B: 'O', L: 'G', R: 'B'
   };
-  
+
   for (const face of faces) {
     if (cube[face][4] !== expectedCenters[face]) {
-      return { 
-        valid: false, 
-        error: `Center piece on ${face} face should be ${expectedCenters[face]}` 
+      return {
+        valid: false,
+        error: `Center piece on ${face} face should be ${expectedCenters[face]}`
       };
     }
   }
-  
+
   return { valid: true };
 };
 
-// Admissible heuristic: count misplaced stickers / 20
-// Each move affects at most 20 non-center stickers, so this is a valid lower bound
-const heuristic = (cube: CubeState): number => {
-  let misplaced = 0;
-  const faces: (keyof CubeState)[] = ['U', 'D', 'F', 'B', 'L', 'R'];
-  for (const face of faces) {
-    const center = cube[face][4];
-    for (let i = 0; i < 9; i++) {
-      if (i !== 4 && cube[face][i] !== center) misplaced++;
-    }
-  }
-  return Math.ceil(misplaced / 20);
-};
-
-// IDA* search with heuristic pruning
-const idaSearch = (
-  startCube: CubeState,
-  maxDepth: number = 20,
-  timeLimitMs: number = 15000
-): Move[] | null => {
-  if (isSolved(startCube)) return [];
-  
-  const startTime = Date.now();
-  let timedOut = false;
-  let nodeCount = 0;
-  const path: Move[] = [];
-  
-  const search = (
-    cube: CubeState,
-    depth: number,
-    lastMove: Move | null
-  ): boolean => {
-    if (timedOut) return false;
-    nodeCount++;
-    if (nodeCount % 10000 === 0 && Date.now() - startTime > timeLimitMs) {
-      timedOut = true;
-      return false;
-    }
-    if (isSolved(cube)) return true;
-    // Prune: if remaining depth is less than the heuristic estimate, no solution here
-    if (heuristic(cube) > depth) return false;
-    if (depth === 0) return false;
-    
-    for (const move of ALL_MOVES) {
-      if (lastMove) {
-        const lastFace = lastMove[0];
-        const currentFace = move[0];
-        if (lastFace === currentFace) continue;
-        if (
-          (lastFace === 'F' && currentFace === 'B') ||
-          (lastFace === 'R' && currentFace === 'L') ||
-          (lastFace === 'U' && currentFace === 'D')
-        ) {
-          if (lastFace > currentFace) continue;
-        }
-      }
-      
-      const newCube = applyMove(cube, move);
-      path.push(move);
-      if (search(newCube, depth - 1, move)) return true;
-      path.pop();
-    }
-    
-    return false;
-  };
-  
-  // Start IDA* from the heuristic estimate instead of 1
-  const startDepth = Math.max(1, heuristic(startCube));
-  for (let depth = startDepth; depth <= maxDepth; depth++) {
-    if (timedOut) break;
-    path.length = 0;
-    nodeCount = 0;
-    if (search(startCube, depth, null)) return [...path];
-  }
-  
-  return null;
-};
-
-// Layer-by-layer solver for better average performance
-const solveLayerByLayer = (cube: CubeState): Move[] | null => {
-  // For production: implement CFOP or Kociemba properly
-  // This is a placeholder that uses brute-force for short solutions
-  return idaSearch(cube, 20, 8000);
-};
-
 // Main solve function
-export const solveCube = async (cube: CubeState, options?: { skipValidation?: boolean; timeLimitMs?: number }): Promise<{ 
-  success: boolean; 
-  solution?: Move[]; 
-  error?: string 
+export const solveCube = async (cube: CubeState, options?: { skipValidation?: boolean; timeLimitMs?: number }): Promise<{
+  success: boolean;
+  solution?: Move[];
+  error?: string
 }> => {
   if (!options?.skipValidation) {
     const validation = validateCube(cube);
@@ -158,22 +85,23 @@ export const solveCube = async (cube: CubeState, options?: { skipValidation?: bo
       return { success: false, error: validation.error };
     }
   }
-  
+
   if (isSolved(cube)) {
     return { success: true, solution: [] };
   }
-  
-  // Run solver with optional custom time limit
-  const solution = idaSearch(cube, 20, options?.timeLimitMs ?? 15000);
-  
-  if (solution) {
-    return { success: true, solution };
+
+  try {
+    const faceletStr = cubeStateToFaceletString(cube);
+    const cubeInstance = Cube.fromString(faceletStr);
+    const solutionStr: string = cubeInstance.solve();
+    const moves = parseCubejsSolution(solutionStr);
+    return { success: true, solution: moves };
+  } catch (e) {
+    return {
+      success: false,
+      error: 'Failed to solve cube. The cube state may be invalid.'
+    };
   }
-  
-  return { 
-    success: false, 
-    error: 'Solver timed out. Try clicking Scramble again for a different configuration.' 
-  };
 };
 
 // Optimized solver using precomputed moves
@@ -185,7 +113,7 @@ export const solveWithTimeout = (
     const timeout = setTimeout(() => {
       resolve({ success: false, error: 'Solver timeout. Try a simpler scramble.' });
     }, timeoutMs);
-    
+
     solveCube(cube).then((result) => {
       clearTimeout(timeout);
       resolve(result);

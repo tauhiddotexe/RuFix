@@ -12,6 +12,7 @@ export const useCube = () => {
   const [error, setError] = useState<string | null>(null);
   // Store the cube state at the moment solve was called (step 0 of solution)
   const solveStartCube = useRef<CubeState | null>(null);
+  const solveInFlightRef = useRef(false);
 
   const reset = useCallback(() => {
     setCube(cloneCube(SOLVED_CUBE));
@@ -59,6 +60,9 @@ export const useCube = () => {
   }, []);
 
   const solve = useCallback(async () => {
+    if (solveInFlightRef.current) return;
+
+    solveInFlightRef.current = true;
     setIsSolving(true);
     setError(null);
     setSolution(null);
@@ -79,6 +83,7 @@ export const useCube = () => {
       solveStartCube.current = null;
       setError('An error occurred while solving');
     } finally {
+      solveInFlightRef.current = false;
       setIsSolving(false);
     }
   }, [cube]);

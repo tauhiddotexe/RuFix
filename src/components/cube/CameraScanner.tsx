@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Camera, X, RotateCcw, Check, AlertCircle } from 'lucide-react';
-import { CubeColor, FaceName, CubeState } from '@/types/cube';
+import { CubeColor, FaceName } from '@/types/cube';
 import { cn } from '@/lib/utils';
+import { ColorCalibration, HsvColor, detectCubeColorsFromImageData } from '@/lib/colorDetection';
 
 type CubeSize = 2 | 3 | 4;
 
@@ -21,50 +22,13 @@ const FACE_NAMES: Record<FaceName, string> = {
   R: 'Right (Blue center)',
 };
 
-const rgbToHsl = (r: number, g: number, b: number): [number, number, number] => {
-  r /= 255;
-  g /= 255;
-  b /= 255;
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  let h = 0;
-  let s = 0;
-  const l = (max + min) / 2;
-
-  if (max !== min) {
-    const d = max - min;
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    switch (max) {
-      case r:
-        h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-        break;
-      case g:
-        h = ((b - r) / d + 2) / 6;
-        break;
-      case b:
-        h = ((r - g) / d + 4) / 6;
-        break;
-    }
-  }
-  return [h * 360, s * 100, l * 100];
-};
-
-const detectColor = (r: number, g: number, b: number): CubeColor => {
-  const [h, s, l] = rgbToHsl(r, g, b);
-  
-  if (s < 30 && l > 65) return 'W';
-  if (h >= 40 && h <= 70 && s > 50 && l > 45) return 'Y';
-  if (h >= 0 && h <= 45) {
-    if (h > 15 && l > 45) return 'O';
-    return 'R';
-  }
-  if (h > 340) return 'R';
-  if (h >= 200 && h <= 260) return 'B';
-  if (h >= 80 && h <= 160) return 'G';
-  if (r > g && r > b) return h > 20 ? 'O' : 'R';
-  if (g > r && g > b) return 'G';
-  if (b > r && b > g) return 'B';
-  return 'W';
+const FACE_CENTER_COLORS: Record<FaceName, CubeColor> = {
+  U: 'W',
+  D: 'Y',
+  F: 'R',
+  B: 'O',
+  L: 'G',
+  R: 'B',
 };
 
 export const CameraScanner = ({ onScanComplete, onClose, cubeSize = 3 }: CameraScannerProps) => {
@@ -76,6 +40,8 @@ export const CameraScanner = ({ onScanComplete, onClose, cubeSize = 3 }: CameraS
   const [currentScan, setCurrentScan] = useState<CubeColor[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [calibration, setCalibration] = useState<ColorCalibration>({});
+  const calibrationCandidateRef = useRef<{ color: CubeColor; hsv: HsvColor } | null>(null);
 
   const cellCount = cubeSize * cubeSize;
   const currentFace = FACE_ORDER[currentFaceIndex];
@@ -130,39 +96,16 @@ export const CameraScanner = ({ onScanComplete, onClose, cubeSize = 3 }: CameraS
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0);
 
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const gridSize = Math.min(canvas.width, canvas.height) * 0.5;
-    const cellSize = gridSize / cubeSize;
-    const startX = centerX - gridSize / 2;
-    const startY = centerY - gridSize / 2;
+    // For 3x3 faces, the fixed center sticker lets us calibrate the HSV ranges
+    // without changing the existing scan flow or adding new UI.
+    const result = detectCubeColorsFromImageData(ctx.getImageData(0, 0, canvas.width, canvas.height), cubeSize, {
+      calibration,
+      centerHintColor: cubeSize === 3 ? FACE_CENTER_COLORS[currentFace] : undefined,
+    });
 
-    const colors: CubeColor[] = [];
-    
-    for (let row = 0; row < cubeSize; row++) {
-      for (let col = 0; col < cubeSize; col++) {
-        const sampleX = startX + col * cellSize + cellSize / 2;
-        const sampleY = startY + row * cellSize + cellSize / 2;
-        
-        const sampleRadius = cellSize * 0.2;
-        let totalR = 0, totalG = 0, totalB = 0, count = 0;
-        
-        for (let dx = -sampleRadius; dx <= sampleRadius; dx += 2) {
-          for (let dy = -sampleRadius; dy <= sampleRadius; dy += 2) {
-            const pixel = ctx.getImageData(sampleX + dx, sampleY + dy, 1, 1).data;
-            totalR += pixel[0];
-            totalG += pixel[1];
-            totalB += pixel[2];
-            count++;
-          }
-        }
-        
-        colors.push(detectColor(totalR / count, totalG / count, totalB / count));
-      }
-    }
-
-    setCurrentScan(colors);
-  }, [cubeSize]);
+    calibrationCandidateRef.current = result.calibrationCandidate ?? null;
+    setCurrentScan(result.colors);
+  }, [calibration, cubeSize, currentFace]);
 
   useEffect(() => {
     if (!stream) return;
@@ -174,6 +117,14 @@ export const CameraScanner = ({ onScanComplete, onClose, cubeSize = 3 }: CameraS
 
   const confirmScan = () => {
     if (!currentScan) return;
+
+    const calibrationCandidate = calibrationCandidateRef.current;
+    if (calibrationCandidate?.hsv) {
+      setCalibration(prev => ({
+        ...prev,
+        [calibrationCandidate.color]: calibrationCandidate.hsv,
+      }));
+    }
     
     const newScanned = { ...scannedFaces, [currentFace]: currentScan };
     setScannedFaces(newScanned);
@@ -182,6 +133,7 @@ export const CameraScanner = ({ onScanComplete, onClose, cubeSize = 3 }: CameraS
       setCurrentFaceIndex(prev => prev + 1);
       setCurrentScan(null);
       setIsScanning(false);
+      calibrationCandidateRef.current = null;
     } else {
       const defaultFace = (color: CubeColor) => Array(cellCount).fill(color) as CubeColor[];
       const completeCube: Record<string, CubeColor[]> = {
@@ -201,6 +153,7 @@ export const CameraScanner = ({ onScanComplete, onClose, cubeSize = 3 }: CameraS
   const retakeScan = () => {
     setCurrentScan(null);
     setIsScanning(false);
+    calibrationCandidateRef.current = null;
   };
 
   const COLOR_DISPLAY: Record<CubeColor, string> = {

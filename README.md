@@ -1,4 +1,5 @@
 # RuFix — Rubik's Cube Solver
+#Try it Yourself @ https://rufix.vercel.app/
 
 A modern, production-ready Rubik's Cube solver supporting 2×2, 3×3, and 4×4 cubes.
 
